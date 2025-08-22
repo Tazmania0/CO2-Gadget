@@ -715,17 +715,17 @@ bool handleSavePreferencesFromJSON(String jsonPreferences) {
         if (JsonDocument.containsKey("DisplayBright")) {
             if (DisplayBrightness != JsonDocument["DisplayBright"]) {
 #ifdef LILYGO_T_DISPLAY_S3
-                if (JsonDocument["DisplayBright"] > 16) {
+                if (JsonDocument["DisplayBright"].as<int>() > 16) {
                     JsonDocument["DisplayBright"] = 16;
                 }
-                if (JsonDocument["DisplayBright"] < 1) {
+                if (JsonDocument["DisplayBright"].as<int>() < 1) {
                     JsonDocument["DisplayBright"] = 1;
                 }
 #else
-                if (JsonDocument["DisplayBright"] > 255) {
+                if (JsonDocument["DisplayBright"].as<int>() > 255) {
                     JsonDocument["DisplayBright"] = 255;
                 }
-                if (JsonDocument["DisplayBright"] < 1) {
+                if (JsonDocument["DisplayBright"].as<int>() < 1) {
                     JsonDocument["DisplayBright"] = 1;
                 }
 #endif

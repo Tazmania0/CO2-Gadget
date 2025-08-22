@@ -23,7 +23,7 @@
 #include <menuIO/u8g2Out.h>
 #endif
 
-#include <menuIO/esp8266Out.h>  //must include this even if not doing web output...
+//#include <menuIO/esp8266Out.h>  //must include this even if not doing web output...
 
 using namespace Menu;
 
