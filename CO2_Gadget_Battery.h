@@ -31,7 +31,9 @@ Battery battery(batteryDischargedMillivolts, batteryFullyChargedMillivolts, ADC_
 void initBattery() {
     battery.onDemand(battery.ON_DEMAND_DISABLE, LOW);
     battery.begin(vRef, voltageDividerRatio, &asigmoidal);
-    // Serial.println("-->[BATT***] Battery initialized with vRef: " + String(vRef) + " and voltage divider ratio: " + String(voltageDividerRatio));
+    //if(!inMenu) {
+    //Serial.println("-->[BATT***] Battery initialized with vRef: " + String(vRef) + " and voltage divider ratio: " + String(voltageDividerRatio));
+    //    }
 }
 
 void readBatteryVoltage() {
