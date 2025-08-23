@@ -164,16 +164,28 @@ uint64_t timeInitializationCompleted = 0;
 // Variables for Battery reading
 float batteryVoltage = 0;
 uint8_t batteryLevel = 100;
+#ifdef SUPPORT_LOW_POWER
+RTC_DATA_ATTR uint16_t vRef = 960;
+#else
 uint16_t vRef = 960;
+#endif
+
 uint16_t batteryDischargedMillivolts = 3200;    // Voltage of battery when we consider it discharged (0%).
 uint16_t batteryFullyChargedMillivolts = 4200;  // Voltage of battery when it is considered fully charged (100%).
 
 // Variables to control automatic display off to save power
+#ifdef SUPPORT_LOW_POWER
+RTC_DATA_ATTR bool hasBattery = false;
+RTC_DATA_ATTR bool workingOnExternalPower = true;    // True if working on external power (USB connected)
+RTC_DATA_ATTR bool displayOffOnExternalPower = false;
+#else
 bool hasBattery = false;
 bool workingOnExternalPower = true;    // True if working on external power (USB connected)
-uint32_t actualDisplayBrightness = 0;  // To know if it's on or off
 bool displayOffOnExternalPower = false;
 bool wakeDisplayOnCO2Alert = true;            // Wake display when CO2 rises above the warning threshold (issue #80)
+#endif
+
+
 uint16_t timeToDisplayOff = 0;                // Time in seconds to turn off the display to save power.
 volatile uint64_t lastTimeButtonPressed = 0;  // Last time stamp button up was pressed
 

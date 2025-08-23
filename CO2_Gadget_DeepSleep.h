@@ -12,7 +12,7 @@
 #include <Sensors.hpp>
 
 #define DEEP_SLEEP_DEBUG
-#define DEEP_SLEEP_DEBUG2
+//#define DEEP_SLEEP_DEBUG2
 
 // CO2 sensors enum
 // typedef enum {
@@ -756,7 +756,8 @@ void handleWakeupCauseOnWake(esp_sleep_wakeup_cause_t wakeupCause) {
 #if defined(SUPPORT_OLED) || defined(SUPPORT_EINK)
             Serial.println("-->[DEEP] Turn display off before going to deep sleep *");
             delay(10);
-            displaySleep(false);
+            //displaySleep(false);
+            displaySleep(true);
 #endif
             toDeepSleep();
             break;
@@ -849,7 +850,8 @@ void deepSleepLoop() {
 #endif
             Serial.println("-->[DEEP] Display off before going to deep sleep");
             delay(20);
-            displaySleep(false);
+            //displaySleep(false);
+            displaySleep(true);
 #endif
             // deepSleepData.lowPowerMode = MEDIUM_LOWPOWER;
             toDeepSleep();

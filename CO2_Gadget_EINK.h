@@ -398,8 +398,16 @@ void initDisplayFromDeepSleep(bool forceRedraw = false) {
         forceRedraw = true;
         display.init(115200, true, RESETDURATION, false);
         firstBoot = false;
+        #ifdef DEBUG_EINK
+        Serial.print("-->[EINK] Initializing display from deep sleep with full reset mode: ");
+        Serial.println(__func__);
+#endif
     } else {
         display.init(115200, false, RESETDURATION, false);
+#ifdef DEBUG_EINK
+        Serial.print("-->[EINK] Initializing display from deep sleep with fast mode from: ");
+        Serial.println(__func__);
+#endif
     }
 
     // Set default options to draw
@@ -771,7 +779,7 @@ void displayShowValues(bool forceRedraw = false) {
     if (deepSleepData.cyclesLeftToRedrawDisplay > 0) {
         deepSleepData.cyclesLeftToRedrawDisplay--;
 #ifdef DEBUG_EINK
-        Serial.println("-->[EINK] Cycles left to full refresh of display: " + String(cyclesLeftToRedrawDisplay));
+        Serial.println("-->[EINK] Cycles left to full refresh of display: " + String(deepSleepData.cyclesLeftToRedrawDisplay));
 #endif
     } else {
         deepSleepData.cyclesLeftToRedrawDisplay = deepSleepData.redrawDisplayEveryCycles;
@@ -799,6 +807,7 @@ void displayShowValues(bool forceRedraw = false) {
 
     if (forceRedraw) {
         display.display();  // Full update
+
     } else {
         display.displayWindow(0, 0, display.width(), display.height());  // Refresh screen in partial mode
     }
