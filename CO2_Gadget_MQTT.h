@@ -176,7 +176,7 @@ bool sendMQTTDiscoveryTopic(String deviceClass, String stateClass, String entity
     payload = String("{") +
               "\"~\": \"" + maintopic + "\"," +
               "\"unique_id\": \"" + maintopic + "-" + configTopic + "\"," +
-              "\"object_id\": \"" + maintopic + "_" + configTopic + "\"," +
+              "\"default_entity_id\": \"" + maintopic + "_" + configTopic + "\"," +
               "\"name\": \"" + name + "\"," +
               "\"icon\": \"mdi:" + icon + "\"," +
               "\"unit_of_measurement\": \"" + unit + "\",";
