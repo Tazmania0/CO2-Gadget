@@ -40,6 +40,8 @@
 
 /*****************************************************************************************************/
 
+#include <Arduino.h>
+#include <esp_task_wdt.h>
 #define SUPPORT_CAPTIVE_PORTAL  // Please, don't disable this.
 
 // Functions and enum definitions
@@ -50,6 +52,8 @@ void putPreferences();                              // Defined in CO2_Gadget_Pre
 void menuLoop();                                    // Defined in CO2_Gadget_Menu.h
 void setBLEHistoryInterval(uint64_t interval);      // Defined in CO2_Gadget_BLE.h
 String getLowPowerModeName(uint16_t mode);          // Defined in CO2_Gadget_DeepSleep.h
+uint64_t getReliableUptimeSeconds();                // Accumulated uptime across deep sleep cycles
+String getReliableUptimeFormatted();                // Accumulated uptime formatted as <dd>d <hh>h <mm>m
 void restartTimerToDeepSleep();                     // Defined in CO2_Gadget_DeepSleep.h
 void toDeepSleep();                                 // Defined in CO2_Gadget_DeepSleep.h
 void setDisplayReverse(bool reverse);               // Defined in CO2_Gadget_TFT.h or CO2_Gadget_OLED.h or CO2_Gadget_EINK.h
@@ -242,9 +246,28 @@ typedef struct {
     uint16_t timeToDisplayOnWake = 3;
     bool measurementsStarted;
     uint64_t bootTimes;
+    uint64_t uptimeMillis;
 } deepSleepData_t;
 
 RTC_DATA_ATTR deepSleepData_t deepSleepData;
+
+uint64_t getReliableUptimeSeconds() {
+    return (deepSleepData.uptimeMillis + millis()) / 1000;
+}
+
+String getReliableUptimeFormatted() {
+    uint64_t totalMinutes = (deepSleepData.uptimeMillis + millis()) / 60000;
+    uint64_t days = totalMinutes / 1440;
+    uint8_t hours = (totalMinutes % 1440) / 60;
+    uint8_t minutes = totalMinutes % 60;
+    char uptime[32];
+
+    snprintf(uptime, sizeof(uptime), "%02llud %02uh %02um",
+             static_cast<unsigned long long>(days),
+             static_cast<unsigned int>(hours),
+             static_cast<unsigned int>(minutes));
+    return String(uptime);
+}
 
 #ifdef BUILD_GIT
 #undef BUILD_GIT
@@ -808,6 +831,7 @@ void setup() {
     Serial.println("-->[STUP] lowPowerMode mode (from RTC memory): (" + String(deepSleepData.lowPowerMode) + ") " + getLowPowerModeName(deepSleepData.lowPowerMode));
 
     if ((esp_reset_reason() == ESP_RST_DEEPSLEEP) && (deepSleepData.lowPowerMode != HIGH_PERFORMANCE)) {
+        deepSleepData.uptimeMillis += static_cast<uint64_t>(deepSleepData.timeSleeping) * 1000ULL;
         ++deepSleepData.bootTimes;
         Serial.println("-->[STUP] Boot times from Deep Sleep: " + String(deepSleepData.bootTimes));
         timeToWaitForImprov = 0;
@@ -847,6 +871,7 @@ void setup() {
     } else {
         // Normal boot from any reason
         if ((esp_reset_reason() == ESP_RST_POWERON) || (esp_reset_reason() == ESP_RST_BROWNOUT) || (esp_reset_reason() == ESP_RST_SW) || (esp_reset_reason() == ESP_RST_PANIC) || (esp_reset_reason() == ESP_RST_INT_WDT) || (esp_reset_reason() == ESP_RST_TASK_WDT) || (esp_reset_reason() == ESP_RST_WDT)) {
+            deepSleepData.uptimeMillis = 0;
             Serial.println("-->[STUP] Initializing from: " + getResetReason());
             initPreferences();
             initThresholds();
@@ -915,19 +940,38 @@ void loop() {  // Old loop function. Not used anymore. Just for reference
             Serial.println("...");
         }
     }
+
+    // Debug: Log before each major function to identify hangs
+    static unsigned long lastLoopLogTime = 0;
+    bool debugLoop = (millis() - lastLoopLogTime > 10000);  // Log every 10 seconds
+    if (debugLoop) {
+        Serial.println("-->[LOOP] Starting loop iteration");
+        lastLoopLogTime = millis();
+    }
+
     batteryLoop();
     utilityLoop();
     improvLoop();
+
+    if (debugLoop) Serial.println("-->[LOOP] Before wifiClientLoop");
     wifiClientLoop();
+    if (debugLoop) Serial.println("-->[LOOP] After wifiClientLoop");
+
+    if (debugLoop) Serial.println("-->[LOOP] Before mqttClientLoop");
     mqttClientLoop();
+    if (debugLoop) Serial.println("-->[LOOP] After mqttClientLoop");
+
     if (deepSleepEnabled) {
-        // if ((showDebug) && (!inMenu)) Serial.println("-->[MAIN] Reading sensors in interactive mode (will go into low power mode)");
+        if (debugLoop) Serial.println("-->[LOOP] Before sensorsLoop (deepSleepEnabled)");
         sensorsLoop();
+        if (debugLoop) Serial.println("-->[LOOP] After sensorsLoop");
         deepSleepLoop();
     } else {
-        // if ((showDebug) && (!inMenu)) Serial.println("-->[MAIN] Reading sensors with CO2 Gadget in high performance mode. ");
+        if (debugLoop) Serial.println("-->[LOOP] Before sensorsLoop (high performance)");
         sensorsLoop();
+        if (debugLoop) Serial.println("-->[LOOP] After sensorsLoop");
     }
+
     outputsLoop();
     processPendingCommands();
     readingsLoop();
@@ -935,5 +979,14 @@ void loop() {  // Old loop function. Not used anymore. Just for reference
     adjustBrightnessLoop();
     buttonsLoop();
     menuLoop();
+
+    if (debugLoop) Serial.println("-->[LOOP] Before BLELoop");
     BLELoop();
+    if (debugLoop) Serial.println("-->[LOOP] After BLELoop");
+
+    if (debugLoop) {
+        Serial.println("-->[LOOP] Loop iteration complete");
+        Serial.printf("-->[LOOP] Free heap: %d, Min free heap: %d\n", ESP.getFreeHeap(), ESP.getMinFreeHeap());
+    }
+    esp_task_wdt_reset();  // Feed the task watchdog
 }

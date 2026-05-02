@@ -186,6 +186,7 @@ void initSensors() {
 #else
     Wire.begin();
 #endif
+    Wire.setTimeout(2000);  // Set I2C timeout to 2 seconds to prevent hangs
 
     Serial.println("-->[SENS] Detecting sensors...");
     sensors.setOnDataCallBack(&onSensorDataOk);      // all data read callback
@@ -312,7 +313,11 @@ void sensorsLoop() {
         //     Serial.print("[+] ");        // Print a + every loop to show that the device is alive
         //     lastDotPrintTime = millis();
         // }
+        unsigned long startTime = millis();
         sensors.loop();
+        if (millis() - startTime > 2000) {  // If sensors.loop() took more than 2 seconds, log it
+            Serial.println("-->[SENS] sensors.loop() took longer than 2 seconds");
+        }
     }
 }
 
