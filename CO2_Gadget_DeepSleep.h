@@ -643,13 +643,11 @@ bool handleLowPowerSensors() {
 
 void handleCycleCountersOnWake() {
     --deepSleepData.cyclesLeftToWiFiConnect;
-    --deepSleepData.cyclesLeftToRedrawDisplay;
     if (deepSleepData.cyclesLeftToWiFiConnect == 65535) deepSleepData.cyclesLeftToWiFiConnect = 0;
-    if (deepSleepData.cyclesLeftToRedrawDisplay == 65535) deepSleepData.cyclesLeftToRedrawDisplay = 0;
 
 #if defined(DEEP_SLEEP_DEBUG)
     Serial.println("-->[DEEP] Cycles left to connect to WiFi: " + String(deepSleepData.cyclesLeftToWiFiConnect));
-    Serial.println("-->[DEEP] Cycles left to redraw E-Ink display: " + String(deepSleepData.cyclesLeftToRedrawDisplay));
+    Serial.println("-->[DEEP] Display redraw cycles left: " + String(deepSleepData.cyclesLeftToRedrawDisplay));
 #endif
 }
 
