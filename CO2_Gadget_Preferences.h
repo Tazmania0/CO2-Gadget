@@ -670,20 +670,11 @@ String getActualSettingsAsJson(bool includePasswords = false) {
     return preferencesJson;
 }
 
-bool handleSavePreferencesFromJSON(String jsonPreferences) {
-    // Create a JSON object to store preferences
-    DynamicJsonDocument JsonDocument(1024); // Asegúrate de ajustar el tamaño según sea necesario
-
-    // Try to deserialize the JSON body from the request
-    DeserializationError error = deserializeJson(JsonDocument, jsonPreferences);
-    if (error) {
-        // Handle the error when deserializing JSON
-        Serial.print("Error deserializing JSON: ");
-        Serial.println(error.c_str());
-        return false;
-    }
+bool handleSavePreferencesFromJSON(JsonVariant JsonDocument) {
 
 #ifdef DEBUG_PREFERENCES
+    String jsonPreferences;
+    serializeJson(JsonDocument, jsonPreferences);
     String debugMessage = "-->[PREF] JSON received (" + String(__func__) + "): " + jsonPreferences;
     Serial.println(debugMessage);
 #endif
@@ -1011,6 +1002,18 @@ bool handleSavePreferencesFromJSON(String jsonPreferences) {
 
     putPreferences();
     return true;
+}
+
+bool handleSavePreferencesFromJSON(String jsonPreferences) {
+    DynamicJsonDocument JsonDocument(1024);
+    DeserializationError error = deserializeJson(JsonDocument, jsonPreferences);
+    if (error) {
+        Serial.print("Error deserializing JSON: ");
+        Serial.println(error.c_str());
+        return false;
+    }
+
+    return handleSavePreferencesFromJSON(JsonDocument.as<JsonVariant>());
 }
 
 bool setPreferenceValue(String key, String value) {

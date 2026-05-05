@@ -7,8 +7,8 @@
 // Enum for output types
 enum OutputType {
     DISPLAY_SHOW,
-    MQTT_SEND,
     BLE_SEND,
+    MQTT_SEND,
     ESPNOW_SEND,
     NUM_OUTPUTS  // Number of output types
 };
@@ -27,6 +27,7 @@ struct ThresholdConfig {
     uint16_t previousCO2Value;
     float previousTemperatureValue;
     float previousHumidityValue;
+    uint64_t lastUpdateSeconds;
     bool co2CombineWithAnd;
     bool tempCombineWithAnd;
     bool humCombineWithAnd;
@@ -43,13 +44,15 @@ class ThresholdManager {
     void setThresholds(OutputType outputType, bool enabled, bool useOnlyInLowPower, uint16_t keepAlive, uint16_t co2ThresholdAbsolute, float tempThresholdAbsolute, float humThresholdAbsolute, uint16_t co2ThresholdPercentage, float tempThresholdPercentage, float humThresholdPercentage, bool co2CombineWithAnd, bool tempCombineWithAnd, bool humCombineWithAnd);
     ThresholdConfig getThresholds(OutputType outputType);
     void printThresholdsDifferences(OutputType outputType);
+    void printThresholdEvaluation(OutputType outputType, uint16_t co2, float temp, float hum, bool isLowPowerMode = false, bool forceUpdate = false);
     void updatePreviousValues(OutputType outputType, uint16_t co2, float temp, float hum);
-    bool checkAndMaybeUpdateThresholds(OutputType outputType, uint16_t co2, float temp, float hum);
-    bool evaluateThresholds(OutputType outputType, uint16_t co2, float temp, float hum);
+    bool checkAndMaybeUpdateThresholds(OutputType outputType, uint16_t co2, float temp, float hum, bool updateOnPass = true);
+    bool evaluateThresholds(OutputType outputType, uint16_t co2, float temp, float hum, bool isLowPowerMode = false, bool updateOnPass = true);
     String getThresholdsAsJson(OutputType outputType);
     String getAllThresholdsAsJson();
-    void saveThresholdsToNVR();
-    void setThresholdsFromJSON(String response);
+    bool saveThresholdsToNVR();
+    bool setThresholdsFromJSON(String response);
+    bool setThresholdsFromJSON(JsonVariant json);
     void loadThresholdsFromNVR();
 };
 

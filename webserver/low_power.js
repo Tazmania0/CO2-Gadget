@@ -232,20 +232,19 @@ function saveThresholdsToServer() {
     var ThresholdsData = collectThresholdsData();
     console.log("Sending Thresholds to server:", ThresholdsData);
 
-    // Send the preferences data to the server
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", "/saveThresholds", true);
-    xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-    xhr.send(JSON.stringify(ThresholdsData));
-
-    // Handle the response from the server
-    xhr.onload = function () {
-        if (xhr.status === 200) {
+    return fetch('/saveThresholds', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(ThresholdsData)
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error updating thresholds. Status: ${response.status}`);
+            }
             console.log("Thresholds updated successfully!");
-        } else {
-            alert("Error updating thresholds. Please try again.");
-        }
-    };
+        });
 }
 
 function savePreferencesToServer() {
@@ -263,7 +262,7 @@ function savePreferencesToServer() {
         "displayOnWake": document.getElementById("deepSleepData.displayOnWake").checked
     };
     console.log("Sending Low Power preferences to server:", lowPowerData);
-    fetch('/savePreferences', {
+    return fetch('/savePreferences', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -283,8 +282,12 @@ function savePreferencesToServer() {
 function saveLowPowerToServer() {
     // Show a popup to indicate that the preferences are being saved
     showSavingPopup();
-    saveThresholdsToServer();
-    savePreferencesToServer();
+    saveThresholdsToServer()
+        .then(() => savePreferencesToServer())
+        .catch(error => {
+            console.error('Error saving Low Power settings:', error);
+            alert("Error updating low power settings. Please try again.");
+        });
 }
 
 document.addEventListener("DOMContentLoaded", function () {

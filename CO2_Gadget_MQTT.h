@@ -334,10 +334,17 @@ void publishMeasurementsMQTT() {
 void publishMQTT(bool forcePublish = false) {
 #ifdef SUPPORT_MQTT
     if (activeMQTT && !troubledMQTT && !troubledWIFI && (WiFi.status() == WL_CONNECTED) && mqttClient.connected()) {
-        if ((forcePublish) || ((millis() - lastTimeMQTTPublished >= timeBetweenMQTTPublish * 1000) || (millis() - lastTimeMQTTPublished >= timeToKeepAliveMQTT * 1000) || (lastTimeMQTTPublished == 0))) {
+        bool isLowPowerMode = deepSleepData.lowPowerMode != 0;
+        ThresholdConfig mqttThresholds = thresholdsManager.getThresholds(MQTT_SEND);
+        bool thresholdActive = mqttThresholds.enabled && (!mqttThresholds.useOnlyInLowPower || isLowPowerMode);
+        bool shouldPublish = thresholdActive
+                                 ? thresholdsManager.evaluateThresholds(MQTT_SEND, co2, temp, hum, isLowPowerMode, false)
+                                 : (forcePublish || (millis() - lastTimeMQTTPublished >= timeBetweenMQTTPublish * 1000) || (millis() - lastTimeMQTTPublished >= timeToKeepAliveMQTT * 1000) || (lastTimeMQTTPublished == 0));
+        if (shouldPublish) {
             publishMeasurementsMQTT();
             publishMQTTAlarms();
             publishMQTTSystemData();
+            if (thresholdActive) thresholdsManager.updatePreviousValues(MQTT_SEND, co2, temp, hum);
             lastTimeMQTTPublished = millis();
         }
     }

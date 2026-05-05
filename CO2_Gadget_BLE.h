@@ -58,7 +58,7 @@ void initBLE() {
  *
  * @note This function should be called periodically to publish the sensor data.
  */
-void publishBLE() {
+void publishBLE(bool forcePublish = false) {
     static int64_t lastMeasurementTimeMs = 0;
     static int measurementIntervalMs = 1000;
     static int64_t lastBatteryLevelUpdateMs = 0;
@@ -67,12 +67,22 @@ void publishBLE() {
     if (isDownloadingBLE) {
         return;
     }
-    if (millis() - lastMeasurementTimeMs >= measurementIntervalMs) {
+    if (!activeBLE) {
+        return;
+    }
+    bool isLowPowerMode = deepSleepData.lowPowerMode != 0;
+    ThresholdConfig bleThresholds = thresholdsManager.getThresholds(BLE_SEND);
+    bool thresholdActive = bleThresholds.enabled && (!bleThresholds.useOnlyInLowPower || isLowPowerMode);
+    bool shouldPublish = thresholdActive
+                             ? thresholdsManager.evaluateThresholds(BLE_SEND, co2, temp, hum, isLowPowerMode, false)
+                             : (forcePublish || (millis() - lastMeasurementTimeMs >= measurementIntervalMs));
+    if (shouldPublish) {
         if ((activeBLE) && (co2 >= 400) && (co2 <= 5000) && (temp >= -40) && (temp <= 85) && (hum >= 0) && (hum <= 100)) {
             provider.writeValueToCurrentSample(co2, SignalType::CO2_PARTS_PER_MILLION);
             provider.writeValueToCurrentSample(temp, SignalType::TEMPERATURE_DEGREES_CELSIUS);
             provider.writeValueToCurrentSample(hum, SignalType::RELATIVE_HUMIDITY_PERCENTAGE);
             provider.commitSample();
+            if (thresholdActive) thresholdsManager.updatePreviousValues(BLE_SEND, co2, temp, hum);
             lastMeasurementTimeMs = millis();
         }
 #ifdef DEBUG_BLE
