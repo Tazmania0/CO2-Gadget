@@ -345,12 +345,12 @@ void doDeepSleepWiFiConnect() {
     }
 
 #ifdef SUPPORT_ESPNOW
-    if (deepSleepData.sendESPNowOnWake) {
+    if (deepSleepData.sendESPNowOnWake && thresholdsManager.evaluateThresholds(ESPNOW_SEND, co2, temp, hum, true, false)) {
         initESPNow();
     }
 #endif
 #ifdef SUPPORT_MQTT
-    if (deepSleepData.sendMQTTOnWake) {
+    if (deepSleepData.sendMQTTOnWake && thresholdsManager.evaluateThresholds(MQTT_SEND, co2, temp, hum, true, false)) {
         doDeepSleepMQTTConnect();
     }
 #endif
@@ -359,8 +359,19 @@ void doDeepSleepWiFiConnect() {
 
 void displayFromDeepSleep(bool forceRedraw = false) {
 #ifdef SUPPORT_EINK
+    bool shouldUpdateDisplay = thresholdsManager.evaluateThresholds(DISPLAY_SHOW, co2, temp, hum, true, false);
+#ifdef DEBUG_THRESHOLDS
+    thresholdsManager.printThresholdEvaluation(DISPLAY_SHOW, co2, temp, hum, true, false);
+    Serial.println("-->[TRESH][DISPLAY] E-Ink full redraw requested by cycle counter: " + String(forceRedraw));
+#endif
+    if (!shouldUpdateDisplay) {
+#ifdef DEBUG_THRESHOLDS
+        Serial.println("-->[TRESH][DISPLAY] Skipping E-Ink init/update because display thresholds did not pass");
+#endif
+        return;
+    }
     initDisplayFromDeepSleep(forceRedraw);
-    displayShowValues();
+    displayShowValues(forceRedraw);
 #endif
 }
 
@@ -650,12 +661,12 @@ void handleLowPowerModeBasicOnWake() {
 
 void handleBLEOnWake() {
 #ifdef SUPPORT_BLE
-    if (deepSleepData.activeBLEOnWake) {
+    if (deepSleepData.activeBLEOnWake && thresholdsManager.evaluateThresholds(BLE_SEND, co2, temp, hum, true, false)) {
         initBLE();
 #ifdef DEEP_SLEEP_DEBUG
         Serial.println("-->[DEEP] BLE initialized. activeBLE: " + String(activeBLE));
 #endif
-        publishBLE();
+        publishBLE(true);
     }
 #endif
 }
@@ -671,6 +682,17 @@ void handleDisplayReverseOnWake() {
 void handleDisplayRedrawOnWake() {
 #if defined(SUPPORT_TFT) || defined(SUPPORT_OLED) || defined(SUPPORT_EINK)
     if (deepSleepData.cyclesLeftToRedrawDisplay == 0) {
+        bool shouldUpdateDisplay = thresholdsManager.evaluateThresholds(DISPLAY_SHOW, co2, temp, hum, true, false);
+#ifdef DEBUG_THRESHOLDS
+        thresholdsManager.printThresholdEvaluation(DISPLAY_SHOW, co2, temp, hum, true, false);
+        Serial.println("-->[TRESH][DISPLAY] Redraw-on-wake requested by cycle counter");
+#endif
+        if (!shouldUpdateDisplay) {
+#ifdef DEBUG_THRESHOLDS
+            Serial.println("-->[TRESH][DISPLAY] Skipping redraw-on-wake because display thresholds did not pass");
+#endif
+            return;
+        }
 #ifdef DEEP_SLEEP_DEBUG
         Serial.println("-->[DEEP] Updating display");
 #endif
@@ -683,6 +705,17 @@ void handleDisplayRedrawOnWake() {
 void handleDisplayOnWake() {
 #if defined(SUPPORT_TFT) || defined(SUPPORT_OLED)
     if (deepSleepData.displayOnWake && deepSleepData.cyclesLeftToRedrawDisplay == 0) {
+        bool shouldUpdateDisplay = thresholdsManager.evaluateThresholds(DISPLAY_SHOW, co2, temp, hum, true, false);
+#ifdef DEBUG_THRESHOLDS
+        thresholdsManager.printThresholdEvaluation(DISPLAY_SHOW, co2, temp, hum, true, false);
+        Serial.println("-->[TRESH][DISPLAY] Momentary display-on-wake requested");
+#endif
+        if (!shouldUpdateDisplay) {
+#ifdef DEBUG_THRESHOLDS
+            Serial.println("-->[TRESH][DISPLAY] Skipping momentary display-on-wake because display thresholds did not pass");
+#endif
+            return;
+        }
 #ifdef DEEP_SLEEP_DEBUG
         Serial.println("-->[DEEP] Displaying values momentarily for " + String(deepSleepData.timeToDisplayOnWake) + " seconds");
 #endif
@@ -713,6 +746,18 @@ void handleMQTTPublishOnWake() {
 #endif
 }
 
+void handleESPNowPublishOnWake() {
+#ifdef SUPPORT_ESPNOW
+    if (deepSleepData.sendESPNowOnWake) {
+#ifdef DEEP_SLEEP_DEBUG
+        Serial.println("-->[DEEP] ESP-NOW initialized. Publishing measurements.");
+#endif
+        publishESPNow(true);
+        delay(10);
+    }
+#endif
+}
+
 void handleMediumLowPowerModeOnWake() {
 #ifdef DEEP_SLEEP_DEBUG
     Serial.println("-->[DEEP] Waking up from deep sleep. LowPowerMode: MEDIUM_LOWPOWER");
@@ -728,6 +773,7 @@ void handleMediumLowPowerModeOnWake() {
 #ifdef DEEP_SLEEP_DEBUG
     Serial.println("-->[DEEP] CO2: " + String(co2) + " CO2temp: " + String(temp) + " CO2humi: " + String(hum));
 #endif
+    handleESPNowPublishOnWake();
     handleMQTTPublishOnWake();
 }
 
@@ -784,6 +830,10 @@ void handleWakeupCauseOnWake(esp_sleep_wakeup_cause_t wakeupCause) {
 
 void fromDeepSleep() {
     esp_sleep_wakeup_cause_t wakeupCause = esp_sleep_get_wakeup_cause();
+    thresholdsManager.loadThresholdsFromNVR();
+#ifdef DEBUG_THRESHOLDS
+    Serial.println("-->[TRESH] Thresholds reloaded from NVR after deep sleep wake");
+#endif
 #ifdef DEEP_SLEEP_DEBUG
     printRTCMemoryExit();
     Serial.println("-->[STUP] Initializing from deep sleep mode working with sensor (" + String(deepSleepData.co2Sensor) + "): " + getDeepSleepDataCo2SensorName());

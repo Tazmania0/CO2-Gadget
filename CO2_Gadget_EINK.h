@@ -371,10 +371,13 @@ void busyCallbackDeepSleep(const void* p) {
 #endif
 }
 
+static bool einkDisplayUpdateInProgress = false;
+
 void busyCallbackHighPerformance(const void* p) {
 #ifdef DEBUG_EINK
     // Serial.println("[EINK] busyCallbackHighPerformance light sleep");
 #endif
+    if (einkDisplayUpdateInProgress) return;
     menuLoop();
 }
 
@@ -682,7 +685,11 @@ void testRedrawValues(bool randomNumbers = false) {
 #ifdef EINKBOARDGDEM0213B74
 void displayShowValues(bool forceRedraw = false) {
     static uint32_t lastDisplayUpdate = 0;
-    if (!thresholdsManager.evaluateThresholds(DISPLAY_SHOW, co2, temp, hum)) return;
+    if (einkDisplayUpdateInProgress) return;
+    bool isLowPowerMode = deepSleepData.lowPowerMode != 0;
+    ThresholdConfig displayThresholds = thresholdsManager.getThresholds(DISPLAY_SHOW);
+    bool thresholdActive = displayThresholds.enabled && (!displayThresholds.useOnlyInLowPower || isLowPowerMode);
+    if (!forceRedraw && thresholdActive && !thresholdsManager.evaluateThresholds(DISPLAY_SHOW, co2, temp, hum, isLowPowerMode, false)) return;
     if (isDownloadingBLE) return;  // Do not update display while downloading BLE data to MyAmbiance
     if (redrawDisplayOnNextLoop) {
         shouldRedrawDisplay = true;
@@ -693,7 +700,7 @@ void displayShowValues(bool forceRedraw = false) {
         shouldRedrawDisplay = false;
     }
     // Return if last update less than 15 seconds ago
-    if (!forceRedraw && (millis() - lastDisplayUpdate < 10000)) {
+    if (!forceRedraw && !thresholdActive && (millis() - lastDisplayUpdate < 10000)) {
         return;
     }
 
@@ -733,7 +740,10 @@ void displayShowValues(bool forceRedraw = false) {
     showBLEIcon(elementPosition.bleIconX, elementPosition.bleIconY, forceRedraw);
     showEspNowIcon(elementPosition.espNowIconX, elementPosition.espNowIconY, forceRedraw);
 
+    einkDisplayUpdateInProgress = true;
     display.display(true);  // Partial update
+    einkDisplayUpdateInProgress = false;
+    if (forceRedraw || thresholdActive) thresholdsManager.updatePreviousValues(DISPLAY_SHOW, co2, temp, hum);
 
 #ifdef TIMEDEBUG
     uint32_t elapsed = timer.read();
@@ -747,11 +757,11 @@ void displayShowValues(bool forceRedraw = false) {
 
 void displayShowValues(bool forceRedraw = false) {
     static uint32_t lastDisplayUpdate = 0;
-    if (forceRedraw) {
-        thresholdsManager.updatePreviousValues(DISPLAY_SHOW, co2, temp, hum);
-    } else {
-        if (!thresholdsManager.evaluateThresholds(DISPLAY_SHOW, co2, temp, hum)) return;
-    }
+    if (einkDisplayUpdateInProgress) return;
+    bool isLowPowerMode = deepSleepData.lowPowerMode != 0;
+    ThresholdConfig displayThresholds = thresholdsManager.getThresholds(DISPLAY_SHOW);
+    bool thresholdActive = displayThresholds.enabled && (!displayThresholds.useOnlyInLowPower || isLowPowerMode);
+    if (!forceRedraw && thresholdActive && !thresholdsManager.evaluateThresholds(DISPLAY_SHOW, co2, temp, hum, isLowPowerMode, false)) return;
     if (isDownloadingBLE) return;  // Do not update display while downloading BLE data to MyAmbiance
     if (redrawDisplayOnNextLoop) {
         shouldRedrawDisplay = true;
@@ -762,7 +772,7 @@ void displayShowValues(bool forceRedraw = false) {
         shouldRedrawDisplay = false;
     }
     // Return if last update less than 15 seconds ago
-    if (!forceRedraw && (millis() - lastDisplayUpdate < 15000)) {
+    if (!forceRedraw && !thresholdActive && (millis() - lastDisplayUpdate < 15000)) {
         return;
     }
 
@@ -806,11 +816,14 @@ void displayShowValues(bool forceRedraw = false) {
     // display.hibernate();
 
     if (forceRedraw) {
+        einkDisplayUpdateInProgress = true;
         display.display();  // Full update
-
     } else {
+        einkDisplayUpdateInProgress = true;
         display.displayWindow(0, 0, display.width(), display.height());  // Refresh screen in partial mode
     }
+    einkDisplayUpdateInProgress = false;
+    if (forceRedraw || thresholdActive) thresholdsManager.updatePreviousValues(DISPLAY_SHOW, co2, temp, hum);
 
 #ifdef TIMEDEBUG
     uint32_t elapsed = timer.read();

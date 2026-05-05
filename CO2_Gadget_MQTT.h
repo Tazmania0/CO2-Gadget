@@ -353,6 +353,7 @@ void publishMQTT(bool forcePublish = false) {
             publishMeasurementsMQTT();
             publishMQTTAlarms();
             publishMQTTSystemData();
+            if (thresholdActive) thresholdsManager.updatePreviousValues(MQTT_SEND, co2, temp, hum);
             lastTimeMQTTPublished = millis();
         }
     }

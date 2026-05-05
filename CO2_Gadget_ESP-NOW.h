@@ -177,7 +177,7 @@ void initESPNow() {
     EspNowInititialized = true;
 }
 
-void publishESPNow() {
+void publishESPNow(bool forcePublish = false) {
     if ((!activeESPNOW) || (!EspNowInititialized)) return;
     if (!thresholdsManager.evaluateThresholds(ESPNOW_SEND, co2, temp, hum)) return;
     if ((millis() - lastTimeESPNowPublished >= timeBetweenESPNowPublish * 1000) || (millis() - lastTimeESPNowPublished >= timeToKeepAliveMQTT * 1000) || (lastTimeESPNowPublished == 0)) {
@@ -193,6 +193,7 @@ void publishESPNow() {
         esp_err_t result = esp_now_send(peerESPNowAddress, (uint8_t *)&outgoingReadings, sizeof(outgoingReadings));
         if (result == ESP_OK) {
             Serial.println("-->[ESPN] Sent with success");
+            if (thresholdActive) thresholdsManager.updatePreviousValues(ESPNOW_SEND, co2, temp, hum);
         } else {
             printESPNowError(result);
         }

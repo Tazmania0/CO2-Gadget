@@ -58,7 +58,7 @@ void initBLE() {
  *
  * @note This function should be called periodically to publish the sensor data.
  */
-void publishBLE() {
+void publishBLE(bool forcePublish = false) {
     static int64_t lastMeasurementTimeMs = 0;
     static int measurementIntervalMs = 1000;
     static int64_t lastBatteryLevelUpdateMs = 0;
@@ -73,6 +73,7 @@ void publishBLE() {
             provider.writeValueToCurrentSample(temp, SignalType::TEMPERATURE_DEGREES_CELSIUS);
             provider.writeValueToCurrentSample(hum, SignalType::RELATIVE_HUMIDITY_PERCENTAGE);
             provider.commitSample();
+            if (thresholdActive) thresholdsManager.updatePreviousValues(BLE_SEND, co2, temp, hum);
             lastMeasurementTimeMs = millis();
         }
 #ifdef DEBUG_BLE

@@ -512,7 +512,7 @@ void processPendingCommands() {
 void initThresholds() {
     thresholdsManager.loadThresholdsFromNVR();
 #ifdef DEBUG_THRESHOLDS
-    Serial.print("-->[THRE] Thresholds loaded from NVRAM\t: ");
+    Serial.print("-->[TRESH] Thresholds loaded from NVRAM\t: ");
     printThresholdsFromNVR();
 #endif
 }

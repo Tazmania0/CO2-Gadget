@@ -1446,20 +1446,15 @@ void initWebServer() {
 
     AsyncCallbackJsonWebHandler *saveThresholdsHandler = new AsyncCallbackJsonWebHandler("/saveThresholds", [](AsyncWebServerRequest *request, JsonVariant &json) {
         restartTimerToDeepSleep();
-        StaticJsonDocument<2048> data;
-        if (json.is<JsonArray>()) {
-            data = json.as<JsonArray>();
-        } else if (json.is<JsonObject>()) {
-            data = json.as<JsonObject>();
+        Serial.println("-->[WiFi] Received /saveThresholds command");
+        if (thresholdsManager.setThresholdsFromJSON(json)) {
+            request->send(200, "application/json", "{\"status\":\"ok\"}");
+            Serial.print("-->[WiFi] Thresholds saved: ");
+            printThresholdsFromNVR();
+        } else {
+            request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"Could not save thresholds\"}");
+            Serial.println("-->[WiFi] Error saving thresholds");
         }
-        String response;
-        serializeJson(data, response);
-        request->send(200, "application/json", response);
-        Serial.print("-->[WiFi] Received /saveThresholds command with parameter: ");
-        Serial.println(response);
-        thresholdsManager.setThresholdsFromJSON(response);
-        Serial.print("-->[WiFi] Thresholds saved: ");
-        printThresholdsFromNVR();
     });
 
     server.on("/setPreferencesValue", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -1484,10 +1479,12 @@ void initWebServer() {
             serializeJson(json, response);
             request->send(200, "application/json", response);
 #ifdef DEBUG_CAPTIVE_PORTAL
+            String response;
+            serializeJson(json, response);
             Serial.print("-->[WEBS] Received /savePreferences command with content: ");
             Serial.println(response);
 #endif
-            handleSavePreferencesFromJSON(response);
+            handleSavePreferencesFromJSON(json);
             timeCaptivePortalStarted = millis();
         } else {
             Serial.println("---> [WiFi] Error: request is null");

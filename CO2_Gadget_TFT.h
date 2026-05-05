@@ -686,7 +686,7 @@ void displayShowValues(bool forceRedraw = false) {
     if (forceRedraw) {
         thresholdsManager.updatePreviousValues(DISPLAY_SHOW, co2, temp, hum);
     } else {
-        if (!thresholdsManager.evaluateThresholds(DISPLAY_SHOW, co2, temp, hum)) return;
+        if (!thresholdsManager.evaluateThresholds(DISPLAY_SHOW, co2, temp, hum, deepSleepData.lowPowerMode != 0)) return;
     }
     uint8_t currentDatum = tft.getTextDatum();
     if (redrawDisplayOnNextLoop) {
