@@ -727,12 +727,12 @@ void displayShowValues(bool forceRedraw = false) {
 #endif
     }
 
-    bool drawAllElements = forceRedraw || isLowPowerMode;
+    bool drawAllElements = true;
 
     if (forceRedraw) {
         display.fillScreen(GxEPD_WHITE);
         display.clearScreen(GxEPD_WHITE);
-    } else if (isLowPowerMode) {
+    } else {
         display.setPartialWindow(0, 0, display.width(), display.height());
         display.fillScreen(GxEPD_WHITE);
     }
@@ -804,12 +804,12 @@ void displayShowValues(bool forceRedraw = false) {
 #endif
     }
 
-    bool drawAllElements = forceRedraw || isLowPowerMode;
+    bool drawAllElements = true;
 
     if (forceRedraw) {
         display.setFullWindow();
         display.fillScreen(GxEPD_WHITE);
-    } else if (isLowPowerMode) {
+    } else {
         display.setPartialWindow(0, 0, display.width(), display.height());
         display.fillScreen(GxEPD_WHITE);
     }
