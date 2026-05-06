@@ -321,13 +321,13 @@ void publishMQTTAlarms() {
 
 void publishMQTTSystemData() {
     publishStrMQTT("/uptime", getReliableUptimeFormatted());
+    publishStrMQTT("/lastShutdownClean", previousRunEndedClean ? "true" : "false");
     if (!previousRunEndedClean) {
         publishStrMQTT("/resetReason", getResetReason());
         publishIntMQTT("/resetCode", currentResetReason);
         publishStrMQTT("/wakeupCause", getWakeupCause());
         publishIntMQTT("/wakeupCode", currentWakeupCause);
         publishStrMQTT("/bootTimes", String(static_cast<unsigned long>(deepSleepData.bootTimes)));
-        publishStrMQTT("/lastShutdownClean", "false");
     }
     publishFloatMQTT("/voltage", batteryVoltage);
     publishIntMQTT("/battery", batteryLevel);

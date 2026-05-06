@@ -880,6 +880,7 @@ String getCO2GadgetStatusAsJson() {
     doc["actMQTTOnWake"] = deepSleepData.sendMQTTOnWake;
     doc["actESPnowWake"] = deepSleepData.sendESPNowOnWake;
     doc["displayOnWake"] = deepSleepData.displayOnWake;
+    doc["bootTimes"] = deepSleepData.bootTimes;
 
     String output;
     serializeJson(doc, output);

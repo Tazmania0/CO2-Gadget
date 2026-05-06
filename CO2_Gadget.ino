@@ -252,10 +252,27 @@ typedef struct {
 } deepSleepData_t;
 
 RTC_DATA_ATTR deepSleepData_t deepSleepData;
+RTC_NOINIT_ATTR uint32_t retainedDiagnosticsMagic;
+RTC_NOINIT_ATTR uint64_t retainedDeepSleepBootTimes;
+
+const uint32_t RETAINED_DIAGNOSTICS_MAGIC = 0xC02D14A9;
 
 bool previousRunEndedClean = false;
 esp_reset_reason_t currentResetReason = ESP_RST_UNKNOWN;
 esp_sleep_wakeup_cause_t currentWakeupCause = ESP_SLEEP_WAKEUP_UNDEFINED;
+
+void initRetainedDiagnostics(esp_reset_reason_t resetReason) {
+    if ((retainedDiagnosticsMagic != RETAINED_DIAGNOSTICS_MAGIC) || (resetReason == ESP_RST_POWERON)) {
+        retainedDiagnosticsMagic = RETAINED_DIAGNOSTICS_MAGIC;
+        retainedDeepSleepBootTimes = 0;
+    }
+    deepSleepData.bootTimes = retainedDeepSleepBootTimes;
+}
+
+void incrementDeepSleepBootTimes() {
+    ++retainedDeepSleepBootTimes;
+    deepSleepData.bootTimes = retainedDeepSleepBootTimes;
+}
 
 uint64_t getReliableUptimeSeconds() {
     return (deepSleepData.uptimeMillis + millis()) / 1000;
@@ -881,6 +898,7 @@ void setup() {
     Serial.println();
     currentResetReason = esp_reset_reason();
     currentWakeupCause = esp_sleep_get_wakeup_cause();
+    initRetainedDiagnostics(currentResetReason);
     previousRunEndedClean = (currentResetReason == ESP_RST_POWERON) ? false : deepSleepData.lastShutdownWasClean;
     deepSleepData.lastShutdownWasClean = false;
     Serial.println("-->[STUP] millis(): " + String(millis()));
@@ -891,7 +909,7 @@ void setup() {
 
     if ((currentResetReason == ESP_RST_DEEPSLEEP) && (deepSleepData.lowPowerMode != HIGH_PERFORMANCE)) {
         deepSleepData.uptimeMillis += static_cast<uint64_t>(deepSleepData.timeSleeping) * 1000ULL;
-        ++deepSleepData.bootTimes;
+        incrementDeepSleepBootTimes();
         Serial.println("-->[STUP] Boot times from Deep Sleep: " + String(deepSleepData.bootTimes));
         timeToWaitForImprov = 0;
         switch (currentWakeupCause) {
