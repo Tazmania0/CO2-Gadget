@@ -51,6 +51,8 @@ void putPreferences();                              // Defined in CO2_Gadget_Pre
 void menuLoop();                                    // Defined in CO2_Gadget_Menu.h
 void setBLEHistoryInterval(uint64_t interval);      // Defined in CO2_Gadget_BLE.h
 String getLowPowerModeName(uint16_t mode);          // Defined in CO2_Gadget_DeepSleep.h
+String getResetReason();                            // Defined in CO2_Gadget_DeepSleep.h
+String getWakeupCause();                            // Defined in CO2_Gadget_DeepSleep.h
 uint64_t getReliableUptimeSeconds();                // Accumulated uptime across deep sleep cycles
 String getReliableUptimeFormatted();                // Accumulated uptime formatted as <dd>d <hh>h <mm>m
 void restartTimerToDeepSleep();                     // Defined in CO2_Gadget_DeepSleep.h
@@ -246,9 +248,14 @@ typedef struct {
     bool measurementsStarted;
     uint64_t bootTimes;
     uint64_t uptimeMillis;
+    bool lastShutdownWasClean;
 } deepSleepData_t;
 
 RTC_DATA_ATTR deepSleepData_t deepSleepData;
+
+bool previousRunEndedClean = false;
+esp_reset_reason_t currentResetReason = ESP_RST_UNKNOWN;
+esp_sleep_wakeup_cause_t currentWakeupCause = ESP_SLEEP_WAKEUP_UNDEFINED;
 
 uint64_t getReliableUptimeSeconds() {
     return (deepSleepData.uptimeMillis + millis()) / 1000;
@@ -872,17 +879,22 @@ void setup() {
     Serial.begin(115200);
     Serial.println();
     Serial.println();
+    currentResetReason = esp_reset_reason();
+    currentWakeupCause = esp_sleep_get_wakeup_cause();
+    previousRunEndedClean = (currentResetReason == ESP_RST_POWERON) ? false : deepSleepData.lastShutdownWasClean;
+    deepSleepData.lastShutdownWasClean = false;
     Serial.println("-->[STUP] millis(): " + String(millis()));
-    Serial.println("-->[STUP] Reset reason: (" + String(esp_reset_reason()) + ") " + getResetReason());
-    Serial.println("-->[STUP] Wakeup cause: (" + String(esp_sleep_get_wakeup_cause()) + ") " + getWakeupCause());
+    Serial.println("-->[STUP] Reset reason: (" + String(currentResetReason) + ") " + getResetReason());
+    Serial.println("-->[STUP] Wakeup cause: (" + String(currentWakeupCause) + ") " + getWakeupCause());
+    Serial.println("-->[STUP] Previous shutdown clean: " + String(previousRunEndedClean ? "true" : "false"));
     Serial.println("-->[STUP] lowPowerMode mode (from RTC memory): (" + String(deepSleepData.lowPowerMode) + ") " + getLowPowerModeName(deepSleepData.lowPowerMode));
 
-    if ((esp_reset_reason() == ESP_RST_DEEPSLEEP) && (deepSleepData.lowPowerMode != HIGH_PERFORMANCE)) {
+    if ((currentResetReason == ESP_RST_DEEPSLEEP) && (deepSleepData.lowPowerMode != HIGH_PERFORMANCE)) {
         deepSleepData.uptimeMillis += static_cast<uint64_t>(deepSleepData.timeSleeping) * 1000ULL;
         ++deepSleepData.bootTimes;
         Serial.println("-->[STUP] Boot times from Deep Sleep: " + String(deepSleepData.bootTimes));
         timeToWaitForImprov = 0;
-        switch (esp_sleep_get_wakeup_cause()) {
+        switch (currentWakeupCause) {
             case ESP_SLEEP_WAKEUP_TIMER:
                 Serial.println("-->[STUP] Initializing from deep sleep timer");
                 fromDeepSleep();
@@ -910,14 +922,14 @@ void setup() {
                 break;
             default:
                 Serial.print("-->[STUP][ERROR] Initializing from unknown deep sleep cause: ");
-                Serial.println(esp_sleep_get_wakeup_cause());
+                Serial.println(currentWakeupCause);
                 delay(5000);
                 initHighPerformanceMode();
                 break;
         }
     } else {
         // Normal boot from any reason
-        if ((esp_reset_reason() == ESP_RST_POWERON) || (esp_reset_reason() == ESP_RST_BROWNOUT) || (esp_reset_reason() == ESP_RST_SW) || (esp_reset_reason() == ESP_RST_PANIC) || (esp_reset_reason() == ESP_RST_INT_WDT) || (esp_reset_reason() == ESP_RST_TASK_WDT) || (esp_reset_reason() == ESP_RST_WDT)) {
+        if ((currentResetReason == ESP_RST_POWERON) || (currentResetReason == ESP_RST_BROWNOUT) || (currentResetReason == ESP_RST_SW) || (currentResetReason == ESP_RST_PANIC) || (currentResetReason == ESP_RST_INT_WDT) || (currentResetReason == ESP_RST_TASK_WDT) || (currentResetReason == ESP_RST_WDT)) {
             deepSleepData.uptimeMillis = 0;
             deepSleepData.lastWifiRSSIValid = false;
             deepSleepData.lastWifiRSSI = 0;
@@ -938,7 +950,7 @@ void setup() {
             }
             initHighPerformanceMode();
         } else {
-            Serial.println("-->[STUP][ERROR] No mode defined. Reset reason: " + String(esp_reset_reason()));
+            Serial.println("-->[STUP][ERROR] No mode defined. Reset reason: " + String(currentResetReason));
             printResetReason();
             delay(5000);
             ESP.restart();

@@ -232,6 +232,12 @@ bool publishMQTTDiscovery(int qos) {
     //
     //                                          Device Class        | State Class       | Entity Category   | Group  | Field        | User Friendly Name    | Icon                      | Unit
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "uptime",      "Uptime",               "clock-time-eight-outline", "",         qos);
+    allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "resetReason", "Reset Reason",         "restart",                  "",         qos);
+    allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "resetCode",   "Reset Code",           "numeric",                  "",         qos);
+    allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "wakeupCause", "Wakeup Cause",         "alarm",                    "",         qos);
+    allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "wakeupCode",  "Wakeup Code",          "numeric",                  "",         qos);
+    allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "bootTimes",   "Deep Sleep Boots",     "counter",                  "",         qos);
+    allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "lastShutdownClean", "Last Shutdown Clean", "check-circle-outline", "",         qos);
     // allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "MAC",         "MAC Address",          "network-outline",          "",         qos);
     // allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "hostname",    "Hostname",             "network-outline",          "",         qos);
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "freeMem",     "Free Memory",          "memory",                   "B",        qos);
@@ -315,6 +321,14 @@ void publishMQTTAlarms() {
 
 void publishMQTTSystemData() {
     publishStrMQTT("/uptime", getReliableUptimeFormatted());
+    if (!previousRunEndedClean) {
+        publishStrMQTT("/resetReason", getResetReason());
+        publishIntMQTT("/resetCode", currentResetReason);
+        publishStrMQTT("/wakeupCause", getWakeupCause());
+        publishIntMQTT("/wakeupCode", currentWakeupCause);
+        publishStrMQTT("/bootTimes", String(static_cast<unsigned long>(deepSleepData.bootTimes)));
+        publishStrMQTT("/lastShutdownClean", "false");
+    }
     publishFloatMQTT("/voltage", batteryVoltage);
     publishIntMQTT("/battery", batteryLevel);
     publishIntMQTT("/freeMem", ESP.getFreeHeap());
