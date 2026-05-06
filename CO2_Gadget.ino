@@ -255,7 +255,46 @@ RTC_DATA_ATTR deepSleepData_t deepSleepData;
 RTC_NOINIT_ATTR uint32_t retainedDiagnosticsMagic;
 RTC_NOINIT_ATTR uint64_t retainedDeepSleepBootTimes;
 
+#ifndef ENABLE_RETAINED_WAKE_BREADCRUMBS
+#define ENABLE_RETAINED_WAKE_BREADCRUMBS 1
+#endif
+
+#if ENABLE_RETAINED_WAKE_BREADCRUMBS
+RTC_NOINIT_ATTR uint16_t retainedDiagnosticStage;
+RTC_NOINIT_ATTR uint16_t retainedDiagnosticStageIndex;
+RTC_NOINIT_ATTR uint16_t retainedDiagnosticStageHistory[12];
+RTC_NOINIT_ATTR uint32_t retainedDiagnosticStageMillis[12];
+RTC_NOINIT_ATTR uint32_t retainedDiagnosticStageHeap[12];
+RTC_NOINIT_ATTR uint32_t retainedDiagnosticStageMinHeap[12];
+#endif
+
 const uint32_t RETAINED_DIAGNOSTICS_MAGIC = 0xC02D14A9;
+
+#if ENABLE_RETAINED_WAKE_BREADCRUMBS
+const uint8_t RETAINED_DIAGNOSTIC_HISTORY_SIZE = 12;
+
+enum DiagnosticStage : uint16_t {
+    DIAG_STAGE_UNKNOWN = 0,
+    DIAG_STAGE_SETUP_START = 1,
+    DIAG_STAGE_DEEP_SLEEP_WAKE = 2,
+    DIAG_STAGE_FROM_DEEP_SLEEP_TIMER = 3,
+    DIAG_STAGE_MEDIUM_LOW_POWER_WAKE = 4,
+    DIAG_STAGE_BATTERY = 5,
+    DIAG_STAGE_LOW_POWER_SENSORS = 6,
+    DIAG_STAGE_DISPLAY_FROM_DEEP_SLEEP = 7,
+    DIAG_STAGE_BLE_ON_WAKE = 8,
+    DIAG_STAGE_DISPLAY_ON_WAKE = 9,
+    DIAG_STAGE_WIFI_ON_WAKE = 10,
+    DIAG_STAGE_ESPNOW_ON_WAKE = 11,
+    DIAG_STAGE_MQTT_ON_WAKE = 12,
+    DIAG_STAGE_DISPLAY_SLEEP = 13,
+    DIAG_STAGE_TO_DEEP_SLEEP = 14,
+    DIAG_STAGE_HIGH_PERFORMANCE_INIT = 15,
+    DIAG_STAGE_INTERACTIVE_MODE = 16,
+    DIAG_STAGE_DEEP_SLEEP_STARTED = 17,
+    DIAG_STAGE_DISPLAY_SLEEP_DONE = 18
+};
+#endif
 
 bool previousRunEndedClean = false;
 esp_reset_reason_t currentResetReason = ESP_RST_UNKNOWN;
@@ -265,9 +304,83 @@ void initRetainedDiagnostics(esp_reset_reason_t resetReason) {
     if ((retainedDiagnosticsMagic != RETAINED_DIAGNOSTICS_MAGIC) || (resetReason == ESP_RST_POWERON)) {
         retainedDiagnosticsMagic = RETAINED_DIAGNOSTICS_MAGIC;
         retainedDeepSleepBootTimes = 0;
+#if ENABLE_RETAINED_WAKE_BREADCRUMBS
+        retainedDiagnosticStage = DIAG_STAGE_UNKNOWN;
+        retainedDiagnosticStageIndex = 0;
+        for (uint8_t i = 0; i < RETAINED_DIAGNOSTIC_HISTORY_SIZE; ++i) {
+            retainedDiagnosticStageHistory[i] = DIAG_STAGE_UNKNOWN;
+            retainedDiagnosticStageMillis[i] = 0;
+            retainedDiagnosticStageHeap[i] = 0;
+            retainedDiagnosticStageMinHeap[i] = 0;
+        }
+#endif
     }
     deepSleepData.bootTimes = retainedDeepSleepBootTimes;
 }
+
+#if ENABLE_RETAINED_WAKE_BREADCRUMBS
+const char *getDiagnosticStageName(uint16_t stage) {
+    switch (stage) {
+        case DIAG_STAGE_SETUP_START:
+            return "setup-start";
+        case DIAG_STAGE_DEEP_SLEEP_WAKE:
+            return "deep-sleep-wake";
+        case DIAG_STAGE_FROM_DEEP_SLEEP_TIMER:
+            return "from-deep-sleep-timer";
+        case DIAG_STAGE_MEDIUM_LOW_POWER_WAKE:
+            return "medium-low-power-wake";
+        case DIAG_STAGE_BATTERY:
+            return "battery";
+        case DIAG_STAGE_LOW_POWER_SENSORS:
+            return "low-power-sensors";
+        case DIAG_STAGE_DISPLAY_FROM_DEEP_SLEEP:
+            return "display-from-deep-sleep";
+        case DIAG_STAGE_BLE_ON_WAKE:
+            return "ble-on-wake";
+        case DIAG_STAGE_DISPLAY_ON_WAKE:
+            return "display-on-wake";
+        case DIAG_STAGE_WIFI_ON_WAKE:
+            return "wifi-on-wake";
+        case DIAG_STAGE_ESPNOW_ON_WAKE:
+            return "espnow-on-wake";
+        case DIAG_STAGE_MQTT_ON_WAKE:
+            return "mqtt-on-wake";
+        case DIAG_STAGE_DISPLAY_SLEEP:
+            return "display-sleep";
+        case DIAG_STAGE_TO_DEEP_SLEEP:
+            return "to-deep-sleep";
+        case DIAG_STAGE_HIGH_PERFORMANCE_INIT:
+            return "high-performance-init";
+        case DIAG_STAGE_INTERACTIVE_MODE:
+            return "interactive-mode";
+        case DIAG_STAGE_DEEP_SLEEP_STARTED:
+            return "deep-sleep-started";
+        case DIAG_STAGE_DISPLAY_SLEEP_DONE:
+            return "display-sleep-done";
+        default:
+            return "unknown";
+    }
+}
+
+void markDiagnosticStage(uint16_t stage) {
+    retainedDiagnosticStage = stage;
+    uint8_t index = retainedDiagnosticStageIndex % RETAINED_DIAGNOSTIC_HISTORY_SIZE;
+    retainedDiagnosticStageHistory[index] = stage;
+    retainedDiagnosticStageMillis[index] = millis();
+    retainedDiagnosticStageHeap[index] = ESP.getFreeHeap();
+    retainedDiagnosticStageMinHeap[index] = ESP.getMinFreeHeap();
+    retainedDiagnosticStageIndex++;
+}
+
+uint16_t getPreviousDiagnosticStage() {
+    uint8_t historyCount = retainedDiagnosticStageIndex < RETAINED_DIAGNOSTIC_HISTORY_SIZE ? retainedDiagnosticStageIndex : RETAINED_DIAGNOSTIC_HISTORY_SIZE;
+    if (historyCount < 2) return DIAG_STAGE_UNKNOWN;
+    uint8_t index = (retainedDiagnosticStageIndex + RETAINED_DIAGNOSTIC_HISTORY_SIZE - 2) % RETAINED_DIAGNOSTIC_HISTORY_SIZE;
+    return retainedDiagnosticStageHistory[index];
+}
+#else
+#define markDiagnosticStage(stage) ((void)0)
+#endif
 
 void incrementDeepSleepBootTimes() {
     ++retainedDeepSleepBootTimes;
@@ -899,6 +1012,7 @@ void setup() {
     currentResetReason = esp_reset_reason();
     currentWakeupCause = esp_sleep_get_wakeup_cause();
     initRetainedDiagnostics(currentResetReason);
+    markDiagnosticStage(DIAG_STAGE_SETUP_START);
     previousRunEndedClean = (currentResetReason == ESP_RST_POWERON) ? false : deepSleepData.lastShutdownWasClean;
     deepSleepData.lastShutdownWasClean = false;
     Serial.println("-->[STUP] millis(): " + String(millis()));
@@ -908,6 +1022,7 @@ void setup() {
     Serial.println("-->[STUP] lowPowerMode mode (from RTC memory): (" + String(deepSleepData.lowPowerMode) + ") " + getLowPowerModeName(deepSleepData.lowPowerMode));
 
     if ((currentResetReason == ESP_RST_DEEPSLEEP) && (deepSleepData.lowPowerMode != HIGH_PERFORMANCE)) {
+        markDiagnosticStage(DIAG_STAGE_DEEP_SLEEP_WAKE);
         deepSleepData.uptimeMillis += static_cast<uint64_t>(deepSleepData.timeSleeping) * 1000ULL;
         incrementDeepSleepBootTimes();
         Serial.println("-->[STUP] Boot times from Deep Sleep: " + String(deepSleepData.bootTimes));
@@ -966,6 +1081,7 @@ void setup() {
                 deepSleepEnabled = true;
                 restartTimerToDeepSleep();
             }
+            markDiagnosticStage(DIAG_STAGE_HIGH_PERFORMANCE_INIT);
             initHighPerformanceMode();
         } else {
             Serial.println("-->[STUP][ERROR] No mode defined. Reset reason: " + String(currentResetReason));
@@ -979,6 +1095,7 @@ void setup() {
     }
 
     if (interactiveMode) {
+        markDiagnosticStage(DIAG_STAGE_INTERACTIVE_MODE);
         Serial.println("-->[STUP] Entering interactive mode");
         initPreferences();
     } else {

@@ -806,7 +806,11 @@ String getCO2GadgetFeaturesAsJson() {
 }
 
 String getCO2GadgetStatusAsJson() {
+#if ENABLE_RETAINED_WAKE_BREADCRUMBS
+    StaticJsonDocument<1024> doc;
+#else
     StaticJsonDocument<512> doc;
+#endif
     doc["mainDeviceSelected"] = mainDeviceSelected;
     doc["CO2"] = co2;
     doc["Temperature"] = String(temp, 2);
@@ -881,6 +885,25 @@ String getCO2GadgetStatusAsJson() {
     doc["actESPnowWake"] = deepSleepData.sendESPNowOnWake;
     doc["displayOnWake"] = deepSleepData.displayOnWake;
     doc["bootTimes"] = deepSleepData.bootTimes;
+#if ENABLE_RETAINED_WAKE_BREADCRUMBS
+    doc["diagnosticStage"] = getDiagnosticStageName(retainedDiagnosticStage);
+    doc["diagnosticStageCode"] = retainedDiagnosticStage;
+    doc["diagnosticStageMillis"] = retainedDiagnosticStageMillis[(retainedDiagnosticStageIndex + RETAINED_DIAGNOSTIC_HISTORY_SIZE - 1) % RETAINED_DIAGNOSTIC_HISTORY_SIZE];
+    doc["diagnosticStageHeap"] = retainedDiagnosticStageHeap[(retainedDiagnosticStageIndex + RETAINED_DIAGNOSTIC_HISTORY_SIZE - 1) % RETAINED_DIAGNOSTIC_HISTORY_SIZE];
+    doc["diagnosticStageMinHeap"] = retainedDiagnosticStageMinHeap[(retainedDiagnosticStageIndex + RETAINED_DIAGNOSTIC_HISTORY_SIZE - 1) % RETAINED_DIAGNOSTIC_HISTORY_SIZE];
+
+    JsonArray diagnosticHistory = doc["diagnosticHistory"].to<JsonArray>();
+    uint8_t historyCount = retainedDiagnosticStageIndex < RETAINED_DIAGNOSTIC_HISTORY_SIZE ? retainedDiagnosticStageIndex : RETAINED_DIAGNOSTIC_HISTORY_SIZE;
+    for (uint8_t i = 0; i < historyCount; ++i) {
+        uint8_t index = (retainedDiagnosticStageIndex + RETAINED_DIAGNOSTIC_HISTORY_SIZE - historyCount + i) % RETAINED_DIAGNOSTIC_HISTORY_SIZE;
+        JsonObject entry = diagnosticHistory.add<JsonObject>();
+        entry["stage"] = getDiagnosticStageName(retainedDiagnosticStageHistory[index]);
+        entry["code"] = retainedDiagnosticStageHistory[index];
+        entry["ms"] = retainedDiagnosticStageMillis[index];
+        entry["heap"] = retainedDiagnosticStageHeap[index];
+        entry["minHeap"] = retainedDiagnosticStageMinHeap[index];
+    }
+#endif
 
     String output;
     serializeJson(doc, output);

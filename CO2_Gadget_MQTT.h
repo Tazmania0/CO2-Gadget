@@ -218,6 +218,16 @@ bool sendMQTTDiscoveryTopic(String deviceClass, String stateClass, String entity
     return true;
 }
 
+bool removeMQTTDiscoveryTopic(String field) {
+#ifdef SUPPORT_MQTT
+    if (!mqttClient.connected()) return false;
+
+    String topicFull = discoveryTopic + "sensor/" + String(rootTopic) + "/" + field + "/config";
+    mqttClient.publish(topicFull.c_str(), "", true);
+    return true;
+#endif
+}
+
 bool publishMQTTDiscovery(int qos) {
 #ifdef SUPPORT_MQTT
     bool allSendsSuccessed = false;
@@ -226,6 +236,10 @@ bool publishMQTTDiscovery(int qos) {
         Serial.println("-->[MQTT] Unable to send MQTT Discovery Topics, we are not connected to the MQTT broker!");
         return false;
     }
+
+#if ENABLE_RETAINED_WAKE_BREADCRUMBS
+    removeMQTTDiscoveryTopic("diagnosticHistory");
+#endif
 
     // clang-format off
     // TO-DO: Add MAC Address, Hostname, IP and Status to discovery. Don't know why they are not working (home assistant doesn't show them)
@@ -238,6 +252,14 @@ bool publishMQTTDiscovery(int qos) {
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "wakeupCode",  "Wakeup Code",          "numeric",                  "",         qos);
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "bootTimes",   "Deep Sleep Boots",     "counter",                  "",         qos);
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "lastShutdownClean", "Last Shutdown Clean", "check-circle-outline", "",         qos);
+#if ENABLE_RETAINED_WAKE_BREADCRUMBS
+    allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "diagnosticStage", "Diagnostic Stage",    "map-marker",               "",         qos);
+    allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "diagnosticPreviousStage", "Diagnostic Previous Stage", "map-marker",      "",         qos);
+    allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "diagnosticStageCode", "Diagnostic Stage Code", "numeric",             "",         qos);
+    allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "diagnosticStageHeap", "Diagnostic Stage Heap", "memory",              "B",        qos);
+    allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "diagnosticStageMinHeap", "Diagnostic Stage Min Heap", "memory",       "B",        qos);
+    allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "diagnosticHistoryCodes", "Diagnostic History Codes", "format-list-numbered", "",     qos);
+#endif
     // allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "MAC",         "MAC Address",          "network-outline",          "",         qos);
     // allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "hostname",    "Hostname",             "network-outline",          "",         qos);
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "freeMem",     "Free Memory",          "memory",                   "B",        qos);
@@ -319,9 +341,39 @@ void publishMQTTAlarms() {
     }
 }
 
+#if ENABLE_RETAINED_WAKE_BREADCRUMBS
+String getDiagnosticHistoryCodesForMQTT() {
+    String history = "";
+    uint8_t historyCount = retainedDiagnosticStageIndex < RETAINED_DIAGNOSTIC_HISTORY_SIZE ? retainedDiagnosticStageIndex : RETAINED_DIAGNOSTIC_HISTORY_SIZE;
+
+    for (uint8_t i = 0; i < historyCount; ++i) {
+        uint8_t index = (retainedDiagnosticStageIndex + RETAINED_DIAGNOSTIC_HISTORY_SIZE - historyCount + i) % RETAINED_DIAGNOSTIC_HISTORY_SIZE;
+        if (history.length() > 0) history += ",";
+        history += String(retainedDiagnosticStageHistory[index]);
+    }
+    return history;
+}
+#endif
+
+#if ENABLE_RETAINED_WAKE_BREADCRUMBS
+void publishMQTTDiagnosticsData() {
+    uint8_t lastDiagnosticIndex = (retainedDiagnosticStageIndex + RETAINED_DIAGNOSTIC_HISTORY_SIZE - 1) % RETAINED_DIAGNOSTIC_HISTORY_SIZE;
+
+    publishStrMQTT("/diagnosticStage", getDiagnosticStageName(retainedDiagnosticStage));
+    publishStrMQTT("/diagnosticPreviousStage", getDiagnosticStageName(getPreviousDiagnosticStage()));
+    publishIntMQTT("/diagnosticStageCode", retainedDiagnosticStage);
+    publishIntMQTT("/diagnosticStageHeap", retainedDiagnosticStageHeap[lastDiagnosticIndex]);
+    publishIntMQTT("/diagnosticStageMinHeap", retainedDiagnosticStageMinHeap[lastDiagnosticIndex]);
+    publishStrMQTT("/diagnosticHistoryCodes", getDiagnosticHistoryCodesForMQTT());
+}
+#endif
+
 void publishMQTTSystemData() {
     publishStrMQTT("/uptime", getReliableUptimeFormatted());
     publishStrMQTT("/lastShutdownClean", previousRunEndedClean ? "true" : "false");
+#if ENABLE_RETAINED_WAKE_BREADCRUMBS
+    publishMQTTDiagnosticsData();
+#endif
     if (!previousRunEndedClean) {
         publishStrMQTT("/resetReason", getResetReason());
         publishIntMQTT("/resetCode", currentResetReason);

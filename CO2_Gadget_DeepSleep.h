@@ -249,6 +249,7 @@ void callbackTouch() {
 }
 
 void toDeepSleep() {
+    markDiagnosticStage(DIAG_STAGE_TO_DEEP_SLEEP);
 #ifdef SUPPORT_EINK
 // display.hibernate();
 #endif
@@ -321,6 +322,13 @@ void toDeepSleep() {
     gpio_deep_sleep_hold_en();
     // adc_oneshot_del_unit(adc_handle); // TO-DO: Check if this is needed measuring current consumption in deep sleep
     deepSleepData.lastShutdownWasClean = true;
+    markDiagnosticStage(DIAG_STAGE_DEEP_SLEEP_STARTED);
+#if defined(SUPPORT_MQTT) && ENABLE_RETAINED_WAKE_BREADCRUMBS
+    if (activeMQTT && !troubledMQTT && !troubledWIFI && (WiFi.status() == WL_CONNECTED) && mqttClient.connected()) {
+        publishMQTTDiagnosticsData();
+        delay(10);
+    }
+#endif
     esp_deep_sleep_start();
 }
 
@@ -825,25 +833,35 @@ void handleESPNowPublishOnWake() {
 }
 
 void handleMediumLowPowerModeOnWake() {
+    markDiagnosticStage(DIAG_STAGE_MEDIUM_LOW_POWER_WAKE);
 #ifdef DEEP_SLEEP_DEBUG
     Serial.println("-->[DEEP] Waking up from deep sleep. LowPowerMode: MEDIUM_LOWPOWER");
 #endif
+    markDiagnosticStage(DIAG_STAGE_BATTERY);
     initBattery();
     batteryLoop();
+    markDiagnosticStage(DIAG_STAGE_LOW_POWER_SENSORS);
     if (handleLowPowerSensors()) {
+        markDiagnosticStage(DIAG_STAGE_DISPLAY_FROM_DEEP_SLEEP);
         displayFromDeepSleep(deepSleepData.cyclesLeftToRedrawDisplay == 0);
     }
+    markDiagnosticStage(DIAG_STAGE_BLE_ON_WAKE);
     handleBLEOnWake();
+    markDiagnosticStage(DIAG_STAGE_DISPLAY_ON_WAKE);
     handleDisplayOnWake();
+    markDiagnosticStage(DIAG_STAGE_WIFI_ON_WAKE);
     handleWiFiConnectionOnWake();
 #ifdef DEEP_SLEEP_DEBUG
     Serial.println("-->[DEEP] CO2: " + String(co2) + " CO2temp: " + String(temp) + " CO2humi: " + String(hum));
 #endif
+    markDiagnosticStage(DIAG_STAGE_ESPNOW_ON_WAKE);
     handleESPNowPublishOnWake();
+    markDiagnosticStage(DIAG_STAGE_MQTT_ON_WAKE);
     handleMQTTPublishOnWake();
 }
 
 void fromDeepSleepTimer() {
+    markDiagnosticStage(DIAG_STAGE_FROM_DEEP_SLEEP_TIMER);
     handleCycleCountersOnWake();
 
     switch (deepSleepData.lowPowerMode) {
@@ -875,7 +893,9 @@ void handleWakeupCauseOnWake(esp_sleep_wakeup_cause_t wakeupCause) {
 #endif
             delay(10);
             //displaySleep(false);
+            markDiagnosticStage(DIAG_STAGE_DISPLAY_SLEEP);
             displaySleep(true);
+            markDiagnosticStage(DIAG_STAGE_DISPLAY_SLEEP_DONE);
 #endif
             toDeepSleep();
             break;
@@ -982,6 +1002,7 @@ void deepSleepLoop() {
             delay(20);
             //displaySleep(false);
             displaySleep(true);
+            markDiagnosticStage(DIAG_STAGE_DISPLAY_SLEEP_DONE);
 #endif
             // deepSleepData.lowPowerMode = MEDIUM_LOWPOWER;
             toDeepSleep();

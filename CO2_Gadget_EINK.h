@@ -244,12 +244,13 @@ void turnOffDisplay() {
 
 void displaySleep(bool value = true)  // https://github.com/Bodmer/TFT_eSPI/issues/715
 {
-    display.hibernate();  // TODO: Investigate display.hibernate() vs display.powerOff(). Check if this is the correct way to turn off the display. Specially for GDEM029T94
-    // display.powerOff();
     if (value) {
-        display.powerOff();  // Send command to put the display to sleep.
-        delay(10);           // Delay for shutdown time before another command can be sent.
+        display.epd2.setBusyCallback(nullptr);
+        display.hibernate();
+    } else {
+        display.powerOff();
     }
+    delay(10);  // Delay for shutdown time before another command can be sent.
 }
 
 // Function to set the display rotation
