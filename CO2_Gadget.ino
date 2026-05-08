@@ -40,6 +40,7 @@
 
 /*****************************************************************************************************/
 #include <Arduino.h>
+#include <esp_heap_caps.h>
 #include <esp_task_wdt.h>
 #define SUPPORT_CAPTIVE_PORTAL  // Please, don't disable this.
 
@@ -266,6 +267,7 @@ RTC_NOINIT_ATTR uint16_t retainedDiagnosticStageHistory[12];
 RTC_NOINIT_ATTR uint32_t retainedDiagnosticStageMillis[12];
 RTC_NOINIT_ATTR uint32_t retainedDiagnosticStageHeap[12];
 RTC_NOINIT_ATTR uint32_t retainedDiagnosticStageMinHeap[12];
+RTC_NOINIT_ATTR uint32_t retainedDiagnosticStageLargestBlock[12];
 #endif
 
 const uint32_t RETAINED_DIAGNOSTICS_MAGIC = 0xC02D14A9;
@@ -312,6 +314,7 @@ void initRetainedDiagnostics(esp_reset_reason_t resetReason) {
             retainedDiagnosticStageMillis[i] = 0;
             retainedDiagnosticStageHeap[i] = 0;
             retainedDiagnosticStageMinHeap[i] = 0;
+            retainedDiagnosticStageLargestBlock[i] = 0;
         }
 #endif
     }
@@ -369,6 +372,7 @@ void markDiagnosticStage(uint16_t stage) {
     retainedDiagnosticStageMillis[index] = millis();
     retainedDiagnosticStageHeap[index] = ESP.getFreeHeap();
     retainedDiagnosticStageMinHeap[index] = ESP.getMinFreeHeap();
+    retainedDiagnosticStageLargestBlock[index] = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
     retainedDiagnosticStageIndex++;
 }
 
