@@ -307,15 +307,19 @@ bool publishMQTTDiscovery(int qos) {
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "diagnosticStage", "Diagnostic Stage",    "map-marker",               "",         qos);
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "diagnosticPreviousStage", "Diagnostic Previous Stage", "map-marker",      "",         qos);
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "diagnosticStageCode", "Diagnostic Stage Code", "numeric",             "",         qos);
+#if ENABLE_RETAINED_HEAP_DIAGNOSTICS
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "diagnosticStageHeap", "Diagnostic Stage Heap", "memory",              "B",        qos);
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "diagnosticStageMinHeap", "Diagnostic Stage Min Heap", "memory",       "B",        qos);
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "diagnosticStageLargestBlock", "Diagnostic Stage Largest Block", "memory", "B", qos);
+#endif
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "diagnosticHistoryCodes", "Diagnostic History Codes", "format-list-numbered", "",     qos);
 #endif
     // allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "MAC",         "MAC Address",          "network-outline",          "",         qos);
     // allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "hostname",    "Hostname",             "network-outline",          "",         qos);
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "freeMem",     "Free Memory",          "memory",                   "B",        qos);
+#if ENABLE_RETAINED_HEAP_DIAGNOSTICS
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "measurement",       "diagnostic",       "",      "largestFreeBlock", "Largest Free Block",  "memory",                   "B",        qos);
+#endif
     allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "wifiRSSI",    "Wi-Fi RSSI",           "wifi",                     "dBm",      qos);
     // allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "IP",          "IP",                   "network-outline",          "",         qos);
     // allSendsSuccessed |= sendMQTTDiscoveryTopic("",                 "",                  "diagnostic",       "",      "status",      "Status",               "list-status",              "",         qos);
@@ -410,14 +414,18 @@ String getDiagnosticHistoryCodesForMQTT() {
 
 #if ENABLE_RETAINED_WAKE_BREADCRUMBS
 void publishMQTTDiagnosticsData() {
+#if ENABLE_RETAINED_HEAP_DIAGNOSTICS
     uint8_t lastDiagnosticIndex = (retainedDiagnosticStageIndex + RETAINED_DIAGNOSTIC_HISTORY_SIZE - 1) % RETAINED_DIAGNOSTIC_HISTORY_SIZE;
+#endif
 
     publishStrMQTT("/diagnosticStage", getDiagnosticStageName(retainedDiagnosticStage));
     publishStrMQTT("/diagnosticPreviousStage", getDiagnosticStageName(getPreviousDiagnosticStage()));
     publishIntMQTT("/diagnosticStageCode", retainedDiagnosticStage);
+#if ENABLE_RETAINED_HEAP_DIAGNOSTICS
     publishIntMQTT("/diagnosticStageHeap", retainedDiagnosticStageHeap[lastDiagnosticIndex]);
     publishIntMQTT("/diagnosticStageMinHeap", retainedDiagnosticStageMinHeap[lastDiagnosticIndex]);
     publishIntMQTT("/diagnosticStageLargestBlock", retainedDiagnosticStageLargestBlock[lastDiagnosticIndex]);
+#endif
     publishStrMQTT("/diagnosticHistoryCodes", getDiagnosticHistoryCodesForMQTT());
 }
 #endif
@@ -438,7 +446,9 @@ void publishMQTTSystemData() {
     publishFloatMQTT("/voltage", batteryVoltage);
     publishIntMQTT("/battery", batteryLevel);
     publishIntMQTT("/freeMem", ESP.getFreeHeap());
+#if ENABLE_RETAINED_HEAP_DIAGNOSTICS
     publishIntMQTT("/largestFreeBlock", heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+#endif
     publishIntMQTT("/wifiRSSI", getWiFiRSSIForStatus());
     publishStrMQTT("/IP", WiFi.localIP().toString());
     publishStrMQTT("/MAC", WiFi.macAddress());

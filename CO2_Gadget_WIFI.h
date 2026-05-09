@@ -889,8 +889,10 @@ String getCO2GadgetStatusAsJson() {
     doc["diagnosticStage"] = getDiagnosticStageName(retainedDiagnosticStage);
     doc["diagnosticStageCode"] = retainedDiagnosticStage;
     doc["diagnosticStageMillis"] = retainedDiagnosticStageMillis[(retainedDiagnosticStageIndex + RETAINED_DIAGNOSTIC_HISTORY_SIZE - 1) % RETAINED_DIAGNOSTIC_HISTORY_SIZE];
+#if ENABLE_RETAINED_HEAP_DIAGNOSTICS
     doc["diagnosticStageHeap"] = retainedDiagnosticStageHeap[(retainedDiagnosticStageIndex + RETAINED_DIAGNOSTIC_HISTORY_SIZE - 1) % RETAINED_DIAGNOSTIC_HISTORY_SIZE];
     doc["diagnosticStageMinHeap"] = retainedDiagnosticStageMinHeap[(retainedDiagnosticStageIndex + RETAINED_DIAGNOSTIC_HISTORY_SIZE - 1) % RETAINED_DIAGNOSTIC_HISTORY_SIZE];
+#endif
 
     JsonArray diagnosticHistory = doc["diagnosticHistory"].to<JsonArray>();
     uint8_t historyCount = retainedDiagnosticStageIndex < RETAINED_DIAGNOSTIC_HISTORY_SIZE ? retainedDiagnosticStageIndex : RETAINED_DIAGNOSTIC_HISTORY_SIZE;
@@ -900,8 +902,10 @@ String getCO2GadgetStatusAsJson() {
         entry["stage"] = getDiagnosticStageName(retainedDiagnosticStageHistory[index]);
         entry["code"] = retainedDiagnosticStageHistory[index];
         entry["ms"] = retainedDiagnosticStageMillis[index];
+#if ENABLE_RETAINED_HEAP_DIAGNOSTICS
         entry["heap"] = retainedDiagnosticStageHeap[index];
         entry["minHeap"] = retainedDiagnosticStageMinHeap[index];
+#endif
     }
 #endif
 

@@ -329,7 +329,9 @@ void toDeepSleep() {
         delay(10);
     }
 #endif
+#if ENABLE_RETAINED_WAKE_BREADCRUMBS
     markDiagnosticStage(DIAG_STAGE_FINAL_SLEEP_START);
+#endif
     esp_deep_sleep_start();
 }
 

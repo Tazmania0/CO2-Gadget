@@ -40,7 +40,6 @@
 
 /*****************************************************************************************************/
 #include <Arduino.h>
-#include <esp_heap_caps.h>
 #include <esp_task_wdt.h>
 #define SUPPORT_CAPTIVE_PORTAL  // Please, don't disable this.
 
@@ -260,14 +259,24 @@ RTC_NOINIT_ATTR uint64_t retainedDeepSleepBootTimes;
 #define ENABLE_RETAINED_WAKE_BREADCRUMBS 1
 #endif
 
+#ifndef ENABLE_RETAINED_HEAP_DIAGNOSTICS
+#define ENABLE_RETAINED_HEAP_DIAGNOSTICS 0
+#endif
+
+#if ENABLE_RETAINED_HEAP_DIAGNOSTICS
+#include <esp_heap_caps.h>
+#endif
+
 #if ENABLE_RETAINED_WAKE_BREADCRUMBS
 RTC_NOINIT_ATTR uint16_t retainedDiagnosticStage;
 RTC_NOINIT_ATTR uint16_t retainedDiagnosticStageIndex;
 RTC_NOINIT_ATTR uint16_t retainedDiagnosticStageHistory[12];
 RTC_NOINIT_ATTR uint32_t retainedDiagnosticStageMillis[12];
+#if ENABLE_RETAINED_HEAP_DIAGNOSTICS
 RTC_NOINIT_ATTR uint32_t retainedDiagnosticStageHeap[12];
 RTC_NOINIT_ATTR uint32_t retainedDiagnosticStageMinHeap[12];
 RTC_NOINIT_ATTR uint32_t retainedDiagnosticStageLargestBlock[12];
+#endif
 #endif
 
 const uint32_t RETAINED_DIAGNOSTICS_MAGIC = 0xC02D14A9;
@@ -313,9 +322,11 @@ void initRetainedDiagnostics(esp_reset_reason_t resetReason) {
         for (uint8_t i = 0; i < RETAINED_DIAGNOSTIC_HISTORY_SIZE; ++i) {
             retainedDiagnosticStageHistory[i] = DIAG_STAGE_UNKNOWN;
             retainedDiagnosticStageMillis[i] = 0;
+#if ENABLE_RETAINED_HEAP_DIAGNOSTICS
             retainedDiagnosticStageHeap[i] = 0;
             retainedDiagnosticStageMinHeap[i] = 0;
             retainedDiagnosticStageLargestBlock[i] = 0;
+#endif
         }
 #endif
     }
@@ -373,9 +384,11 @@ void markDiagnosticStage(uint16_t stage) {
     uint8_t index = retainedDiagnosticStageIndex % RETAINED_DIAGNOSTIC_HISTORY_SIZE;
     retainedDiagnosticStageHistory[index] = stage;
     retainedDiagnosticStageMillis[index] = millis();
+#if ENABLE_RETAINED_HEAP_DIAGNOSTICS
     retainedDiagnosticStageHeap[index] = ESP.getFreeHeap();
     retainedDiagnosticStageMinHeap[index] = ESP.getMinFreeHeap();
     retainedDiagnosticStageLargestBlock[index] = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+#endif
     retainedDiagnosticStageIndex++;
 }
 
