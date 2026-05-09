@@ -652,8 +652,10 @@ void initMDNS() {
 }
 
 void disableWiFi() {
-    WiFi.disconnect(true);  // Disconnect from the network
-    WiFi.mode(WIFI_OFF);    // Switch WiFi off
+    WiFi.disconnect(false);  // Disconnect first; WiFi.mode(WIFI_OFF) stops the radio below.
+    delay(20);
+    WiFi.mode(WIFI_OFF);  // Switch WiFi off
+    delay(20);
     Serial.println("-->[WiFi] WiFi disabled!");
 }
 
