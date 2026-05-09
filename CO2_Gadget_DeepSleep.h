@@ -248,6 +248,22 @@ void callbackTouch() {
     // placeholder callback function
 }
 
+void prepareNetworkForDeepSleep() {
+#ifdef SUPPORT_MQTT
+    if (mqttClient.connected()) {
+        mqttClient.loop();
+        delay(10);
+        mqttClient.disconnect();
+        delay(20);
+    }
+#endif
+
+    if (WiFi.getMode() != WIFI_OFF) {
+        disableWiFi();
+        delay(50);
+    }
+}
+
 void toDeepSleep() {
     markDiagnosticStage(DIAG_STAGE_TO_DEEP_SLEEP);
 #ifdef SUPPORT_EINK
@@ -329,6 +345,7 @@ void toDeepSleep() {
         delay(10);
     }
 #endif
+    prepareNetworkForDeepSleep();
 #if ENABLE_RETAINED_WAKE_BREADCRUMBS
     markDiagnosticStage(DIAG_STAGE_FINAL_SLEEP_START);
 #endif
