@@ -294,7 +294,8 @@ enum DiagnosticStage : uint16_t {
     DIAG_STAGE_HIGH_PERFORMANCE_INIT = 15,
     DIAG_STAGE_INTERACTIVE_MODE = 16,
     DIAG_STAGE_DEEP_SLEEP_STARTED = 17,
-    DIAG_STAGE_DISPLAY_SLEEP_DONE = 18
+    DIAG_STAGE_DISPLAY_SLEEP_DONE = 18,
+    DIAG_STAGE_FINAL_SLEEP_START = 19
 };
 #endif
 
@@ -360,6 +361,8 @@ const char *getDiagnosticStageName(uint16_t stage) {
             return "deep-sleep-started";
         case DIAG_STAGE_DISPLAY_SLEEP_DONE:
             return "display-sleep-done";
+        case DIAG_STAGE_FINAL_SLEEP_START:
+            return "final-sleep-start";
         default:
             return "unknown";
     }

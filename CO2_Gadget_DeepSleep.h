@@ -329,6 +329,7 @@ void toDeepSleep() {
         delay(10);
     }
 #endif
+    markDiagnosticStage(DIAG_STAGE_FINAL_SLEEP_START);
     esp_deep_sleep_start();
 }
 
