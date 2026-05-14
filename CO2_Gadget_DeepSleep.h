@@ -404,7 +404,7 @@ void doDeepSleepWiFiConnect() {
 
 void displayFromDeepSleep(bool forceRedraw = false) {
 #ifdef SUPPORT_EINK
-    bool shouldUpdateDisplay = thresholdsManager.evaluateThresholds(DISPLAY_SHOW, co2, temp, hum, true, false);
+    bool shouldUpdateDisplay = forceRedraw || thresholdsManager.evaluateThresholds(DISPLAY_SHOW, co2, temp, hum, true, false);
 #ifdef DEBUG_THRESHOLDS
     thresholdsManager.printThresholdEvaluation(DISPLAY_SHOW, co2, temp, hum, true, false);
     Serial.println("-->[TRESH][DISPLAY] E-Ink full redraw requested by cycle counter: " + String(forceRedraw));

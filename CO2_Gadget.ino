@@ -41,7 +41,6 @@
 /*****************************************************************************************************/
 
 #include <Arduino.h>
-#include <esp_task_wdt.h>
 #define SUPPORT_CAPTIVE_PORTAL  // Please, don't disable this.
 
 // Functions and enum definitions
@@ -947,6 +946,7 @@ void loop() {  // Old loop function. Not used anymore. Just for reference
         }
     }
 
+#ifdef DEBUG_LOOP
     // Debug: Log before each major function to identify hangs
     static unsigned long lastLoopLogTime = 0;
     bool debugLoop = (millis() - lastLoopLogTime > 10000);  // Log every 10 seconds
@@ -954,28 +954,43 @@ void loop() {  // Old loop function. Not used anymore. Just for reference
         Serial.println("-->[LOOP] Starting loop iteration");
         lastLoopLogTime = millis();
     }
+#endif
 
     batteryLoop();
     utilityLoop();
     improvLoop();
 
+#ifdef DEBUG_LOOP
     if (debugLoop) Serial.println("-->[LOOP] Before wifiClientLoop");
+#endif
     wifiClientLoop();
+#ifdef DEBUG_LOOP
     if (debugLoop) Serial.println("-->[LOOP] After wifiClientLoop");
 
     if (debugLoop) Serial.println("-->[LOOP] Before mqttClientLoop");
+#endif
     mqttClientLoop();
+#ifdef DEBUG_LOOP
     if (debugLoop) Serial.println("-->[LOOP] After mqttClientLoop");
+#endif
 
     if (deepSleepEnabled) {
+#ifdef DEBUG_LOOP
         if (debugLoop) Serial.println("-->[LOOP] Before sensorsLoop (deepSleepEnabled)");
+#endif
         sensorsLoop();
+#ifdef DEBUG_LOOP
         if (debugLoop) Serial.println("-->[LOOP] After sensorsLoop");
+#endif
         deepSleepLoop();
     } else {
+#ifdef DEBUG_LOOP
         if (debugLoop) Serial.println("-->[LOOP] Before sensorsLoop (high performance)");
+#endif
         sensorsLoop();
+#ifdef DEBUG_LOOP
         if (debugLoop) Serial.println("-->[LOOP] After sensorsLoop");
+#endif
     }
 
     outputsLoop();
@@ -986,13 +1001,16 @@ void loop() {  // Old loop function. Not used anymore. Just for reference
     buttonsLoop();
     menuLoop();
 
+#ifdef DEBUG_LOOP
     if (debugLoop) Serial.println("-->[LOOP] Before BLELoop");
+#endif
     BLELoop();
+#ifdef DEBUG_LOOP
     if (debugLoop) Serial.println("-->[LOOP] After BLELoop");
 
     if (debugLoop) {
         Serial.println("-->[LOOP] Loop iteration complete");
         Serial.printf("-->[LOOP] Free heap: %d, Min free heap: %d\n", ESP.getFreeHeap(), ESP.getMinFreeHeap());
     }
-    esp_task_wdt_reset();  // Feed the task watchdog
+#endif
 }
