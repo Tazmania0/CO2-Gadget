@@ -353,7 +353,7 @@ void toDeepSleep() {
     delay(5);
     gpio_deep_sleep_hold_en();
     // adc_oneshot_del_unit(adc_handle); // TO-DO: Check if this is needed measuring current consumption in deep sleep
-    prepareNetworkForDeepSleep();
+    prepareServicesForDeepSleep();
     esp_deep_sleep_start();
 }
 

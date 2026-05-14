@@ -179,8 +179,13 @@ void initESPNow() {
 
 void publishESPNow(bool forcePublish = false) {
     if ((!activeESPNOW) || (!EspNowInititialized)) return;
-    if (!thresholdsManager.evaluateThresholds(ESPNOW_SEND, co2, temp, hum)) return;
-    if ((millis() - lastTimeESPNowPublished >= timeBetweenESPNowPublish * 1000) || (millis() - lastTimeESPNowPublished >= timeToKeepAliveMQTT * 1000) || (lastTimeESPNowPublished == 0)) {
+    bool isLowPowerMode = deepSleepData.lowPowerMode != 0;
+    ThresholdConfig espNowThresholds = thresholdsManager.getThresholds(ESPNOW_SEND);
+    bool thresholdActive = espNowThresholds.enabled && (!espNowThresholds.useOnlyInLowPower || isLowPowerMode);
+    bool shouldPublish = thresholdActive
+                             ? thresholdsManager.evaluateThresholds(ESPNOW_SEND, co2, temp, hum, isLowPowerMode, false)
+                             : (forcePublish || (millis() - lastTimeESPNowPublished >= timeBetweenESPNowPublish * 1000) || (millis() - lastTimeESPNowPublished >= timeToKeepAliveESPNow * 1000) || (lastTimeESPNowPublished == 0));
+    if (shouldPublish) {
         //Set values to send
         outgoingReadings.boardID = boardIdESPNow;
         outgoingReadings.co2 = co2;

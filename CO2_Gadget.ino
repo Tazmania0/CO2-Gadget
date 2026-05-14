@@ -182,13 +182,15 @@ uint16_t batteryFullyChargedMillivolts = 4200;  // Voltage of battery when it is
 RTC_DATA_ATTR bool hasBattery = false;
 RTC_DATA_ATTR bool workingOnExternalPower = true;    // True if working on external power (USB connected)
 RTC_DATA_ATTR bool displayOffOnExternalPower = false;
+RTC_DATA_ATTR bool wakeDisplayOnCO2Alert = true;     // Wake display when CO2 rises above the warning threshold (issue #80)
 #else
 bool hasBattery = false;
 bool workingOnExternalPower = true;    // True if working on external power (USB connected)
 bool displayOffOnExternalPower = false;
-bool wakeDisplayOnCO2Alert = true;            // Wake display when CO2 rises above the warning threshold (issue #80)
+bool wakeDisplayOnCO2Alert = true;     // Wake display when CO2 rises above the warning threshold (issue #80)
 #endif
 
+uint32_t actualDisplayBrightness = 0;  // To know if display backlight is on or off.
 
 uint16_t timeToDisplayOff = 0;                // Time in seconds to turn off the display to save power.
 volatile uint64_t lastTimeButtonPressed = 0;  // Last time stamp button up was pressed

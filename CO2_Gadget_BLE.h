@@ -83,8 +83,14 @@ void publishBLE(bool forcePublish = false) {
     if (isDownloadingBLE) {
         return;
     }
-    if (millis() - lastMeasurementTimeMs >= measurementIntervalMs) {
-        if ((activeBLE) && (co2 >= 400) && (co2 <= 5000) && (temp >= -40) && (temp <= 85) && (hum >= 0) && (hum <= 100) && thresholdsManager.evaluateThresholds(BLE_SEND, co2, temp, hum)) {
+    bool isLowPowerMode = deepSleepData.lowPowerMode != 0;
+    ThresholdConfig bleThresholds = thresholdsManager.getThresholds(BLE_SEND);
+    bool thresholdActive = bleThresholds.enabled && (!bleThresholds.useOnlyInLowPower || isLowPowerMode);
+    bool shouldPublish = thresholdActive
+                             ? thresholdsManager.evaluateThresholds(BLE_SEND, co2, temp, hum, isLowPowerMode, false)
+                             : (forcePublish || (millis() - lastMeasurementTimeMs >= measurementIntervalMs));
+    if (shouldPublish) {
+        if ((activeBLE) && (co2 >= 400) && (co2 <= 5000) && (temp >= -40) && (temp <= 85) && (hum >= 0) && (hum <= 100)) {
             provider.writeValueToCurrentSample(co2, SignalType::CO2_PARTS_PER_MILLION);
             provider.writeValueToCurrentSample(temp, SignalType::TEMPERATURE_DEGREES_CELSIUS);
             provider.writeValueToCurrentSample(hum, SignalType::RELATIVE_HUMIDITY_PERCENTAGE);
