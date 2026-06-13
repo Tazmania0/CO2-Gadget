@@ -433,12 +433,19 @@ function initNavBar() {
             console.error('Element with ID "chartsLink" not found.')
         }
     }
+
+    const lowPowerIcon = document.getElementById("lightingIcon");
+    if (lowPowerIcon) lowPowerIcon.classList.toggle("hidden", !features.SUPPORT_LOW_POWER);
 }
 
 /**
  * Handles the low power mode activation.
  */
 function goLowPower() {
+    if (!features.SUPPORT_LOW_POWER) {
+        console.warn('Low power support is not compiled into this firmware.');
+        return;
+    }
     console.log('Low power mode activated');
     fetchWithTimeout('/goLowPower', { method: 'GET', headers: { 'Content-Type': 'text/plain' } }, 5000)
         .then(response => {
